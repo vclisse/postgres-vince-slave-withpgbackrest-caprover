@@ -1,16 +1,64 @@
-FROM postgres:15
+FROM alpine:3.18
 
-# Mise à jour et installation de pgBackRest et des outils SSH
-RUN apt-get update && apt-get install -y \
+# Version de PostgreSQL
+ARG PG_VERSION=15
+
+# Installation des dépendances système
+RUN apk add --no-cache \
+    postgresql${PG_VERSION} \
+    postgresql${PG_VERSION}-contrib \
+    postgresql${PG_VERSION}-dev \
     pgbackrest \
-    openssh-client \
-    openssh-server && \
-    rm -rf /var/lib/apt/lists/*
+    openssh \
+    python3 \
+    py3-pip \
+    py3-wheel \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    && mkdir -p /run/postgresql \
+    && chown postgres:postgres /run/postgresql
 
-# Copier le script d’entrypoint personnalisé
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+# Configuration de l'environnement PostgreSQL
+ENV PGDATA=/var/lib/postgresql/data \
+    PATH=/usr/lib/postgresql/${PG_VERSION}/bin:$PATH \
+    POSTGRES_USER=postgres \
+    POSTGRES_PASSWORD=postgres \
+    BACKREST_STANZA=psql \
+    BACKREST_REPO1_PATH=/var/lib/pgbackrest \
+    SSH_PORT=22 \
+    SSH_PUBLIC_KEY=''
+
+# Installation des packages Python dans un environnement virtuel
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install --no-cache-dir \
+    streamlit==1.29.0 \
+    psycopg[binary]==3.1.12 \
+    watchdog==3.0.0
+
+# Création des répertoires nécessaires
+RUN mkdir -p /var/lib/postgresql/data \
+    /var/lib/pgbackrest \
+    /var/lib/postgresql/.ssh \
+    && chown -R postgres:postgres \
+        /var/lib/postgresql \
+        /var/lib/pgbackrest \
+    && chmod 700 /var/lib/postgresql/.ssh
+
+# Copie des fichiers
+COPY ./web /app/web
+COPY ./entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Utiliser notre entrypoint personnalisé
+# Configuration de Streamlit
+ENV STREAMLIT_SERVER_PORT=8501 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    PATH=/venv/bin:$PATH
+
+# Volumes et ports
+VOLUME ["/var/lib/postgresql/data", "/var/lib/pgbackrest", "/var/lib/postgresql/.ssh"]
+EXPOSE 5432 8501
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["postgres"]
