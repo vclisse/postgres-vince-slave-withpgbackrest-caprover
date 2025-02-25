@@ -3,8 +3,6 @@
    "dockerfileLines": [
       "FROM postgres:${PG_VERSION:-15}",
       "ENV PG_VERSION=${PG_VERSION:-15}",
-      "ENV PG_HOME=/usr/lib/postgresql/${PG_VERSION}",
-      "ENV PATH=${PG_HOME}/bin:$PATH",
       "RUN apt-get update && apt-get install -y pgbackrest openssh-client openssh-server && rm -rf /var/lib/apt/lists/*",
       "ENV POSTGRES_USER=postgres",
       "ENV POSTGRES_PASSWORD=postgres",

@@ -63,8 +63,8 @@ setup_recovery_conf() {
     if [ ! -f "${PGDATA}/PG_VERSION" ]; then
         echo "Initialisation du serveur PostgreSQL en mode standby..."
         
-        # Utilisation de la variable PG_VERSION pour le chemin
-        su - postgres -c "${PG_HOME}/bin/initdb -D ${PGDATA}"
+        # Utiliser directement la commande initdb qui est dans le PATH
+        su - postgres -c "initdb -D ${PGDATA}"
         
         # Pour PostgreSQL 12+, créer le fichier standby.signal
         touch ${PGDATA}/standby.signal
