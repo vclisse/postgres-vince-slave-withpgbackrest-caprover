@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Définition du PATH pour inclure les binaires PostgreSQL
+export PATH=$PATH:/usr/lib/postgresql/${PG_VERSION}/bin
+
 # Configuration du serveur SSH
 setup_ssh_server() {
     echo "Configuration du serveur SSH..."

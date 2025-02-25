@@ -15,11 +15,8 @@ RUN apt-get update && apt-get install -y \
     pgbackrest \
     openssh-client \
     openssh-server \
-    python3 \
-    python3-pip \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
-
-
 
 # Création des répertoires et configuration des permissions
 RUN mkdir -p /var/lib/pgbackrest \
@@ -27,10 +24,11 @@ RUN mkdir -p /var/lib/pgbackrest \
     && chown -R postgres:postgres /var/lib/pgbackrest /var/lib/postgresql/.ssh \
     && chmod 700 /var/lib/postgresql/.ssh
 
-
-# Configuration de l'entrypoint
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Copie et configuration de l'entrypoint
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    mkdir -p /var/log/pgbackrest && \
+    chown -R postgres:postgres /var/log/pgbackrest
 
 # Volumes et ports
 VOLUME ["/var/lib/postgresql/data", "/var/lib/pgbackrest", "/var/lib/postgresql/.ssh"]
