@@ -13,10 +13,14 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     py3-wheel \
+    py3-setuptools \
     gcc \
     musl-dev \
     python3-dev \
     libffi-dev \
+    openssl-dev \
+    linux-headers \
+    cargo \
     && mkdir -p /run/postgresql \
     && chown postgres:postgres /run/postgresql
 
@@ -30,12 +34,12 @@ ENV PGDATA=/var/lib/postgresql/data \
     SSH_PORT=22 \
     SSH_PUBLIC_KEY=''
 
-# Installation des packages Python dans un environnement virtuel
-RUN python3 -m venv /venv && \
-    /venv/bin/pip install --no-cache-dir \
-    streamlit==1.29.0 \
-    psycopg[binary]==3.1.12 \
-    watchdog==3.0.0
+# Installation des packages Python avec pip directement (sans venv)
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir \
+        streamlit==1.29.0 \
+        "psycopg[binary]"==3.1.12 \
+        watchdog==3.0.0
 
 # Création des répertoires nécessaires
 RUN mkdir -p /var/lib/postgresql/data \
