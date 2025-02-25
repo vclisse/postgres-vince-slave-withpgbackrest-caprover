@@ -7,4 +7,5 @@ restore_command = 'pgbackrest --stanza=psql archive-get %f %p'
 – Les clés SSH sont générées automatiquement au démarrage, ce qui permettra d’établir une connexion SSH sortante 
 - se base sur l’image officielle PostgreSQL 15 et y installe pgBackRest ainsi que les outils SSH.
 - Tu documentes ce qu'il faut faire sur le serveur principal dans README.md mais tu ne t'occupe que du serveur slave
-– pgBackRest est installé et pourra être utilisé (via des variables d’environnement) pour restaurer la sauvegarde initiale et récupérer les WAL archivés.
+– pgBackRest est installé et pourra être utilisé (via des variables d’environnement) pour restaurer la sauvegarde initiale et récupérer les WAL archivés. 
+- Le serveur principal ne peux que des connexion sortante 

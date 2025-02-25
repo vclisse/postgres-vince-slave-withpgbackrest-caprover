@@ -1,26 +1,29 @@
 # PostgreSQL Slave avec pgBackRest
 
-Ce conteneur Docker configure un serveur PostgreSQL en mode slave/standby qui utilise pgBackRest pour la récupération initiale et la restauration des WAL archivés. Le slave est conçu pour fonctionner sans port ouvert vers l'extérieur.
+Ce conteneur Docker configure un serveur PostgreSQL en mode slave/standby qui utilise pgBackRest pour recevoir les sauvegardes et WAL archivés envoyés depuis le serveur principal. Le slave est conçu pour fonctionner sans port ouvert vers l'extérieur.
+
+## Architecture de sécurité
+
+Cette solution utilise une architecture sécurisée où:
+- Le serveur principal initie toutes les connexions vers le serveur slave (push model)
+- Le serveur slave n'a aucun port entrant exposé à l'exception du SSH pour recevoir les données
+- Les sauvegardes et WAL sont envoyés par le serveur principal via SSH
 
 ## Fonctionnalités
 
-- Génération automatique des clés SSH au premier démarrage
-- Restauration automatique depuis les sauvegardes pgBackRest
-- Configuration automatique du mode slave avec la restauration des WAL
-- Zéro port entrant requis (seulement des connexions sortantes vers le serveur principal)
+- Configuration automatique pour recevoir les sauvegardes pgBackRest
+- Configuration automatique du mode slave avec restauration des WAL
+- Génération automatique des clés SSH (la clé publique doit être installée sur le serveur slave)
+- Zéro connexion sortante depuis le slave (toutes les connexions sont initiées par le principal)
 
 ## Variables d'environnement
 
 ### Obligatoires
-- `BACKREST_PRIMARY_HOST`: Nom d'hôte/IP du serveur principal pgBackRest
+- `SSH_PORT`: Port SSH sur lequel le serveur slave écoute (défaut: 22)
 - `BACKREST_STANZA`: Nom du stanza pgBackRest (défaut: psql)
 
 ### Optionnelles
-- `BACKREST_PRIMARY_USER`: Utilisateur SSH sur le serveur principal (défaut: postgres)
-- `PG_PRIMARY_HOST`: Hôte PostgreSQL primaire (défaut: postgres_master)
-- `PG_PRIMARY_PORT`: Port PostgreSQL primaire (défaut: 5432)
-- `PG_REPLICATION_USER`: Utilisateur pour la réplication (défaut: replicator)
-- `PG_REPLICATION_PASSWORD`: Mot de passe pour la réplication (défaut: replication)
+- `SSH_PUBLIC_KEY`: Clé publique SSH du serveur principal à ajouter aux authorized_keys
 - `PG_SLAVE_NAME`: Nom de l'application slave (défaut: slave)
 
 ## Configuration du slave avec CapRover
@@ -39,7 +42,7 @@ Ce conteneur Docker configure un serveur PostgreSQL en mode slave/standby qui ut
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y postgresql-15 postgresql-15-pgbackrest openssh-server
+sudo apt-get install -y postgresql-15 postgresql-15-pgbackrest openssh-client
 ```
 
 ### 2. Configuration de pgBackRest sur le serveur principal
@@ -53,6 +56,11 @@ repo1-retention-full=2
 process-max=4
 log-path=/var/log/pgbackrest
 repo1-type=posix
+
+# Configuration pour envoyer les données au serveur slave via SSH
+repo1-host=<ADRESSE_IP_DU_SLAVE>
+repo1-host-user=postgres
+repo1-host-port=22
 
 [psql]
 pg1-path=/var/lib/postgresql/15/main
@@ -70,30 +78,23 @@ max_wal_senders = 10
 wal_level = replica
 ```
 
-### 4. Configuration du fichier pg_hba.conf
+### 4. Configuration SSH pour pgBackRest sur le serveur principal
 
-Ajoutez cette ligne à `/etc/postgresql/15/main/pg_hba.conf`:
-
-```
-host replication replicator 0.0.0.0/0 md5
-```
-
-### 5. Création d'un utilisateur de réplication
-
-```sql
-CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD 'replication';
-```
-
-### 6. Configuration de SSH pour pgBackRest
-
-Après le premier démarrage du slave, récupérez la clé publique générée dans les logs et ajoutez-la au fichier `authorized_keys` de l'utilisateur postgres sur le serveur principal:
+Générez une paire de clés SSH pour l'utilisateur postgres sur le serveur principal:
 
 ```bash
-echo "clé_publique_du_slave" >> /var/lib/postgresql/.ssh/authorized_keys
-chmod 600 /var/lib/postgresql/.ssh/authorized_keys
+sudo -u postgres ssh-keygen -t rsa -b 4096 -f ~postgres/.ssh/id_rsa -N ''
 ```
 
-### 7. Initialisation du stanza pgBackRest
+Récupérez la clé publique générée:
+
+```bash
+cat /var/lib/postgresql/.ssh/id_rsa.pub
+```
+
+Utilisez cette clé comme valeur pour la variable d'environnement `SSH_PUBLIC_KEY` lors du déploiement du slave.
+
+### 5. Initialisation du stanza pgBackRest
 
 ```bash
 sudo -u postgres pgbackrest --stanza=psql stanza-create
@@ -111,16 +112,10 @@ docker logs [container_id]
 
 ### Les problèmes courants
 
-1. **Erreur "clés SSH manquantes"**
-   - Les clés sont générées au premier démarrage et doivent être ajoutées sur le serveur principal
+1. **Erreur de connexion SSH depuis le serveur principal**
+   - Vérifiez que la clé publique du serveur principal est correctement ajoutée à authorized_keys du slave
+   - Vérifiez que le service SSH fonctionne sur le slave
    
-2. **Erreur "stanza non trouvé"**
-   - Vérifiez que le stanza a été créé sur le serveur principal avec `pgbackrest --stanza=psql stanza-create`
-   
-3. **Erreur de connexion SSH**
-   - Vérifiez que la clé publique du slave a été correctement ajoutée au fichier authorized_keys du serveur principal
-   - Vérifiez les permissions (`chmod 700 ~/.ssh` et `chmod 600 ~/.ssh/authorized_keys`)
-   
-4. **Erreur lors de la restauration des WAL**
+2. **Erreur lors de l'envoi des WAL**
    - Vérifiez que l'archive_command fonctionne correctement sur le serveur principal
-   - Assurez-vous que `/var/lib/pgbackrest` a les permissions correctes
+   - Assurez-vous que `/var/lib/pgbackrest` sur le slave a les permissions correctes
