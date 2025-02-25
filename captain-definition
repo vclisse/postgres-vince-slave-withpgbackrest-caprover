@@ -3,8 +3,26 @@
    "dockerfileLines": [
       "FROM postgres:${PG_VERSION:-15}",
       "ENV PG_VERSION=${PG_VERSION:-15}",
-      "RUN apt-get update && apt-get install -y pgbackrest openssh-client openssh-server python3 python3-pip && rm -rf /var/lib/apt/lists/*",
-      "RUN pip3 install streamlit psycopg[binary] watchdog",
+      
+      "# Installation des dépendances système",
+      "RUN apt-get update && apt-get install -y \\",
+      "    pgbackrest \\",
+      "    openssh-client \\",
+      "    openssh-server \\",
+      "    python3 \\",
+      "    python3-pip \\",
+      "    python3-dev \\",
+      "    build-essential \\",
+      "    && rm -rf /var/lib/apt/lists/*",
+      
+      "# Installation des packages Python",
+      "RUN pip3 install --no-cache-dir \\",
+      "    streamlit==1.29.0 \\",
+      "    psycopg[binary]==3.1.12 \\",
+      "    watchdog==3.0.0",
+      
+      "# Variables d'environnement",
+      "ENV PATH=/usr/lib/postgresql/${PG_VERSION}/bin:$PATH",
       "ENV POSTGRES_USER=postgres",
       "ENV POSTGRES_PASSWORD=postgres",
       "ENV PGDATA=/var/lib/postgresql/data",

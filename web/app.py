@@ -2,6 +2,7 @@ import streamlit as st
 import psycopg
 import subprocess
 import os
+from datetime import datetime
 
 def execute_command(command):
     try:
@@ -37,25 +38,114 @@ def import_sql_file(db_name, sql_content):
     os.remove(temp_file)
     return result
 
-st.set_page_config(page_title="PostgreSQL Manager", layout="wide")
-st.title("PostgreSQL Manager")
+def get_pg_version():
+    try:
+        with psycopg.connect("dbname=postgres user=postgres password=postgres") as conn:
+            with conn.cursor() as cur:
+                cur.execute("SHOW server_version;")
+                return cur.fetchone()[0]
+    except Exception:
+        return "N/A"
 
-# Mode actuel et changement de mode
+def get_db_size():
+    try:
+        with psycopg.connect("dbname=postgres user=postgres password=postgres") as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_size_pretty(pg_database_size('postgres'));")
+                return cur.fetchone()[0]
+    except Exception:
+        return "N/A"
+
+# Configuration de la page
+st.set_page_config(
+    page_title="PostgreSQL Manager",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# CSS personnalisé
+st.markdown("""
+<style>
+    .status-card {
+        padding: 2rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        text-align: center;
+    }
+    .status-slave {
+        background-color: #2E86C1;
+        color: white;
+    }
+    .status-master {
+        background-color: #28B463;
+        color: white;
+    }
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background-color: #f0f2f6;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    .metric-card {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0.5rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# En-tête avec métriques
+st.markdown("""
+<div class="header-container">
+    <h1>PostgreSQL Manager</h1>
+    <div style="display: flex;">
+        <div class="metric-card">
+            <h4>Version PostgreSQL</h4>
+            <p>{}</p>
+        </div>
+        <div class="metric-card">
+            <h4>Taille DB</h4>
+            <p>{}</p>
+        </div>
+        <div class="metric-card">
+            <h4>Mise à jour</h4>
+            <p>{}</p>
+        </div>
+    </div>
+</div>
+""".format(get_pg_version(), get_db_size(), datetime.now().strftime("%H:%M:%S")), unsafe_allow_html=True)
+
+# Affichage du statut
+current_mode = "Slave" if os.path.exists('/var/lib/postgresql/data/standby.signal') else "Master"
+status_class = "status-slave" if current_mode == "Slave" else "status-master"
+
+st.markdown(f"""
+<div class="status-card {status_class}">
+    <h2>Mode {current_mode}</h2>
+    <p>Le serveur fonctionne actuellement en mode {current_mode}</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Actions principales dans des colonnes
 col1, col2 = st.columns(2)
+
 with col1:
-    st.header("Mode Serveur")
-    current_mode = "Slave" if is_slave_mode() else "Master"
-    st.write(f"Mode actuel : **{current_mode}**")
-    if st.button(f"Passer en mode {'Master' if is_slave_mode() else 'Slave'}"):
+    st.markdown("### Gestion du Mode")
+    if st.button(f"Passer en mode {'Master' if current_mode == 'Slave' else 'Slave'}", 
+                 type="primary" if current_mode == "Slave" else "secondary"):
         success, message = toggle_mode()
         if success:
             st.success("Mode changé avec succès")
         else:
             st.error(f"Erreur: {message}")
 
-# Création de base de données
 with col2:
-    st.header("Création de Base de Données")
+    st.markdown("### Création de Base de Données")
     with st.form("create_db_form"):
         db_name = st.text_input("Nom de la base de données")
         submit_db = st.form_submit_button("Créer la base de données")
@@ -66,22 +156,31 @@ with col2:
             else:
                 st.error(f"Erreur: {message}")
 
-# Import de fichier SQL
-st.header("Import de fichier SQL")
-with st.form("import_sql_form"):
-    target_db = st.text_input("Base de données cible")
-    sql_file = st.text_area("Contenu SQL à importer", height=200)
-    submit_sql = st.form_submit_button("Importer le SQL")
-    if submit_sql and target_db and sql_file:
-        success, message = import_sql_file(target_db, sql_file)
-        if success:
-            st.success("Import SQL réussi")
-        else:
-            st.error(f"Erreur: {message}")
+# Import SQL avec prévisualisation
+st.markdown("### Import de fichier SQL")
+with st.expander("Développer pour importer du SQL"):
+    with st.form("import_sql_form"):
+        target_db = st.text_input("Base de données cible")
+        sql_file = st.text_area("Contenu SQL à importer", height=200)
+        submit_sql = st.form_submit_button("Importer le SQL")
+        if submit_sql and target_db and sql_file:
+            success, message = import_sql_file(target_db, sql_file)
+            if success:
+                st.success("Import SQL réussi")
+            else:
+                st.error(f"Erreur: {message}")
 
-# Statut de la connexion PostgreSQL
+# Statut de connexion dans la barre latérale avec style
 try:
-    with get_postgres_connection() as conn:
-        st.sidebar.success("✅ Connexion PostgreSQL OK")
+    with get_postgres_connection():
+        st.sidebar.markdown("""
+            <div style="padding: 1rem; background-color: #28B463; color: white; border-radius: 5px;">
+                ✅ Connexion PostgreSQL active
+            </div>
+        """, unsafe_allow_html=True)
 except Exception as e:
-    st.sidebar.error(f"❌ Erreur de connexion PostgreSQL: {str(e)}")
+    st.sidebar.markdown(f"""
+        <div style="padding: 1rem; background-color: #E74C3C; color: white; border-radius: 5px;">
+            ❌ Erreur de connexion: {str(e)}
+        </div>
+    """, unsafe_allow_html=True)
