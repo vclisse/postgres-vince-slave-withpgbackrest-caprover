@@ -50,6 +50,6 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 VOLUME ["${PGDATA}", "/var/lib/pgbackrest", "/var/lib/postgresql/.ssh"]
 EXPOSE 5432 ${SSH_PORT}
 
-USER postgres
+# Ne pas changer l'utilisateur ici, permettre à entrypoint.sh de s'exécuter en tant que root
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["postgres", "-D", "/var/lib/postgresql/data"]

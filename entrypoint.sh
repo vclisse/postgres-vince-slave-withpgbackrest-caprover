@@ -111,6 +111,26 @@ EOF
 
 echo "Démarrage du script entrypoint PostgreSQL Slave..."
 
+# Configuration SSH (exécutée en tant que root)
+if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]; then
+    ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
+    ssh-keygen -f /etc/ssh/ssh_host_ecdsa_key -N '' -t ecdsa
+    ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -N '' -t ed25519
+fi
+
+# Modifier la configuration SSH si nécessaire
+sed -i "s/#Port 22/Port ${SSH_PORT}/" /etc/ssh/sshd_config
+
+# Démarrer le service SSH
+/usr/sbin/sshd
+
+# Configuration de la clé SSH publique si fournie
+if [ ! -z "${SSH_PUBLIC_KEY}" ]; then
+    echo "${SSH_PUBLIC_KEY}" > /var/lib/postgresql/.ssh/authorized_keys
+    chmod 600 /var/lib/postgresql/.ssh/authorized_keys
+    chown postgres:postgres /var/lib/postgresql/.ssh/authorized_keys
+fi
+
 # Configurer le serveur SSH
 setup_ssh_server
 
@@ -121,5 +141,5 @@ setup_pgbackrest
 setup_recovery_conf
 
 echo "Démarrage de PostgreSQL en mode slave..."
-# Exécuter la commande originale Docker
-exec "$@"
+# Basculer vers l'utilisateur postgres pour le reste des opérations
+exec gosu postgres "$@"
