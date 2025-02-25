@@ -1,11 +1,19 @@
-# Architecture & Rôles :
-- Objectif avoir un serveur slave postgres sans sans port ouvert
-– Le container lance PostgreSQL en mode slave.
-– Lors du démarrage en mode recovery, pensez à configurer le fichier postgresql.conf du slave (ou le dossier PGDATA) avec une commande de restauration des WAL, par exemple :
-restore_command = 'pgbackrest --stanza=psql archive-get %f %p'
+/*
+Architecture & Rôles :
 
-– Les clés SSH sont générées automatiquement au démarrage, ce qui permettra d’établir une connexion SSH sortante 
-- se base sur l’image officielle PostgreSQL 15 et y installe pgBackRest ainsi que les outils SSH.
-- Tu documentes ce qu'il faut faire sur le serveur principal dans README.md mais tu ne t'occupe que du serveur slave
-– pgBackRest est installé et pourra être utilisé (via des variables d’environnement) pour restaurer la sauvegarde initiale et récupérer les WAL archivés. 
-- Le serveur principal ne peux que des connexion sortante 
+Objectif : Créer un serveur slave PostgreSQL sans port ouvert, basé sur l'image officielle PostgreSQL 15.
+
+Fonctionnalités :
+- Le container doit lancer PostgreSQL en mode slave.
+- En mode recovery, le fichier de configuration (postgresql.conf ou le dossier PGDATA) doit être configuré avec une commande de restauration des WAL, par exemple :
+  restore_command = 'pgbackrest --stanza=psql archive-get %f %p'
+- Générer automatiquement les clés SSH au démarrage afin de permettre une connexion SSH sortante.
+- Installer pgBackRest et les outils SSH dans l'image.
+- pgBackRest doit pouvoir être utilisé via des variables d’environnement pour restaurer la sauvegarde initiale et récupérer les WAL archivés.
+
+Documentation :
+- Documenter les actions à réaliser sur le serveur principal dans un fichier README.md, mais ne se concentrer que sur le développement du serveur slave.
+
+Contraintes :
+- Le serveur principal ne doit établir que des connexions sortantes.
+*/
