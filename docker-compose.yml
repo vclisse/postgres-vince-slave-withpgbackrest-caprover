@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  postgres_slave:
+    build: ./slave
+    container_name: postgres_slave
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data
+      # Paramètres pour pgBackRest (à adapter selon votre configuration)
+      BACKREST_STANZA: psql
+      BACKREST_REPO1_PATH: /var/lib/pgbackrest
+      # Vous pouvez ajouter d’autres variables pour configurer pgBackRest
+    volumes:
+      - pgdata_slave:/var/lib/postgresql/data
+      - pgbackrest_repo_slave:/var/lib/pgbackrest
+      - ./slave/ssh:/var/lib/postgresql/.ssh
+    ports:
+      - "5433:5432"  # Le slave écoute sur le port 5432 à l’intérieur du container
+    restart: always
+
+volumes:
+  pgdata_slave:
+  pgbackrest_repo_slave:
