@@ -29,7 +29,7 @@ ssh-keygen -A
 sed -i "s/#Port 22/Port ${SSH_PORT}/" /etc/ssh/sshd_config
 sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-# sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 echo "AllowUsers postgres" >> /etc/ssh/sshd_config
 
 # Configurer le répertoire .ssh pour postgres
