@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - PGDATA=/var/lib/postgresql/data
+      - BACKREST_STANZA=psql
+      - SSH_PUBLIC_KEY
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - pgbackrest:/var/lib/pgbackrest
+      - ssh_keys:/var/lib/postgresql/.ssh
+    ports:
+      - "5432:5432"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "8501:8501"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+  pgbackrest:
+  ssh_keys:

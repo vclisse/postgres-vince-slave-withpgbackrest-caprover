@@ -1,0 +1,23 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copie des fichiers de l'application
+COPY ./web /app/web
+COPY requirements.txt /app/
+
+# Installation des dépendances Python
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "/app/web/app.py"]

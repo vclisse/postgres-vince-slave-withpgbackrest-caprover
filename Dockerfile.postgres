@@ -1,0 +1,40 @@
+FROM alpine:3.18
+
+ARG PG_VERSION=15
+
+# Installation des dépendances système
+RUN apk add --no-cache \
+    postgresql${PG_VERSION} \
+    postgresql${PG_VERSION}-contrib \
+    postgresql${PG_VERSION}-dev \
+    pgbackrest \
+    openssh \
+    && mkdir -p /run/postgresql \
+    && chown postgres:postgres /run/postgresql
+
+# Configuration de l'environnement
+ENV PGDATA=/var/lib/postgresql/data \
+    PATH=/usr/lib/postgresql/${PG_VERSION}/bin:$PATH \
+    POSTGRES_USER=postgres \
+    POSTGRES_PASSWORD=postgres \
+    BACKREST_STANZA=psql \
+    BACKREST_REPO1_PATH=/var/lib/pgbackrest \
+    SSH_PORT=22
+
+# Création des répertoires
+RUN mkdir -p /var/lib/postgresql/data \
+    /var/lib/pgbackrest \
+    /var/lib/postgresql/.ssh \
+    && chown -R postgres:postgres \
+        /var/lib/postgresql \
+        /var/lib/pgbackrest \
+    && chmod 700 /var/lib/postgresql/.ssh
+
+COPY ./entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+VOLUME ["/var/lib/postgresql/data", "/var/lib/pgbackrest", "/var/lib/postgresql/.ssh"]
+EXPOSE 5432
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["postgres"]
