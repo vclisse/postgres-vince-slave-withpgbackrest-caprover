@@ -16,7 +16,11 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     openssh-server \
     gosu \
-    && rm -rf /var/lib/apt/lists/*
+    postgresql-common \
+    postgresql-${PG_VERSION} \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /usr/lib/postgresql/${PG_VERSION}/bin \
+    && ln -s /usr/lib/postgresql/${PG_VERSION}/bin/* /usr/local/bin/
 
 # Création des répertoires et configuration des permissions
 RUN mkdir -p /var/lib/pgbackrest \

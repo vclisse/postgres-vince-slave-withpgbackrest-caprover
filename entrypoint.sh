@@ -1,8 +1,23 @@
 #!/bin/bash
 set -e
 
-# Définition du PATH pour inclure les binaires PostgreSQL
-export PATH=$PATH:/usr/lib/postgresql/${PG_VERSION}/bin
+# Correction du PATH pour PostgreSQL
+export PATH="/usr/lib/postgresql/${PG_VERSION}/bin:$PATH"
+
+# Fonction pour trouver initdb
+find_initdb() {
+    for possible_path in \
+        "/usr/lib/postgresql/${PG_VERSION}/bin/initdb" \
+        "/usr/local/bin/initdb" \
+        "/usr/bin/initdb"
+    do
+        if [ -x "$possible_path" ]; then
+            echo "$possible_path"
+            return 0
+        fi
+    done
+    return 1
+}
 
 # Configuration du serveur SSH
 setup_ssh_server() {
@@ -66,8 +81,15 @@ setup_recovery_conf() {
     if [ ! -f "${PGDATA}/PG_VERSION" ]; then
         echo "Initialisation du serveur PostgreSQL en mode standby..."
         
-        # Utiliser directement la commande initdb qui est dans le PATH
-        su - postgres -c "initdb -D ${PGDATA}"
+        # Trouver initdb
+        INITDB_PATH=$(find_initdb)
+        if [ -z "$INITDB_PATH" ]; then
+            echo "ERREUR: impossible de trouver initdb"
+            exit 1
+        fi
+        
+        echo "Utilisation de initdb: $INITDB_PATH"
+        su postgres -c "$INITDB_PATH -D ${PGDATA}"
         
         # Pour PostgreSQL 12+, créer le fichier standby.signal
         touch ${PGDATA}/standby.signal
