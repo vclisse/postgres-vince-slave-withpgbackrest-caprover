@@ -40,7 +40,8 @@ RUN mkdir -p /var/lib/pgbackrest \
     && mkdir -p /var/log/pgbackrest \
     && mkdir -p /var/run/sshd \
     && chown -R postgres:postgres /var/lib/pgbackrest /var/lib/postgresql/.ssh /var/log/pgbackrest \
-    && chmod 700 /var/lib/postgresql/.ssh
+    && chmod 700 /var/lib/postgresql/.ssh \
+    && chmod 755 /var/run/sshd
 
 # Copie des scripts
 COPY entrypoint.sh /usr/local/bin/

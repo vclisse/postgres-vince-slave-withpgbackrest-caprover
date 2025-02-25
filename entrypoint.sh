@@ -20,35 +20,34 @@ find_initdb() {
 }
 
 # Configuration du serveur SSH
-setup_ssh_server() {
-    echo "Configuration du serveur SSH..."
-    
-    # S'assurer que le répertoire .ssh existe
-    mkdir -p /var/lib/postgresql/.ssh
-    touch /var/lib/postgresql/.ssh/authorized_keys
-    
-    # Si une clé publique est fournie via les variables d'environnement, l'ajouter
-    if [ ! -z "${SSH_PUBLIC_KEY}" ]; then
-        echo "Ajout de la clé publique SSH fournie..."
-        echo "${SSH_PUBLIC_KEY}" >> /var/lib/postgresql/.ssh/authorized_keys
-        echo "Clé publique ajoutée avec succès."
-    else
-        echo "AVERTISSEMENT: Aucune clé SSH_PUBLIC_KEY fournie. Le serveur principal ne pourra pas se connecter sans clé."
-    fi
-    
-    # Configurer les permissions SSH
-    chmod 700 /var/lib/postgresql/.ssh
-    chmod 600 /var/lib/postgresql/.ssh/authorized_keys
-    chown -R postgres:postgres /var/lib/postgresql/.ssh
-    
-    # Configuration du serveur SSH
-    sed -i 's/#Port 22/Port ${SSH_PORT:-22}/g' /etc/ssh/sshd_config
-    
-    # Démarrer le serveur SSH
-    service ssh start
-    
-    echo "Serveur SSH configuré et démarré sur le port ${SSH_PORT:-22}."
-}
+echo "Configuration du serveur SSH..."
+
+# Générer les clés SSH du serveur si elles n'existent pas
+ssh-keygen -A
+
+# Configurer sshd
+sed -i "s/#Port 22/Port ${SSH_PORT}/" /etc/ssh/sshd_config
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+echo "AllowUsers postgres" >> /etc/ssh/sshd_config
+
+# Configurer le répertoire .ssh pour postgres
+mkdir -p /var/lib/postgresql/.ssh
+touch /var/lib/postgresql/.ssh/authorized_keys
+
+# Ajouter la clé SSH si fournie
+if [ ! -z "${SSH_PUBLIC_KEY}" ]; then
+    echo "${SSH_PUBLIC_KEY}" > /var/lib/postgresql/.ssh/authorized_keys
+fi
+
+# Configurer les permissions correctes
+chown -R postgres:postgres /var/lib/postgresql/.ssh
+chmod 700 /var/lib/postgresql/.ssh
+chmod 600 /var/lib/postgresql/.ssh/authorized_keys
+
+# Démarrer SSH
+/usr/sbin/sshd
 
 # Configuration de pgBackRest pour le slave
 setup_pgbackrest() {
@@ -110,29 +109,6 @@ EOF
 }
 
 echo "Démarrage du script entrypoint PostgreSQL Slave..."
-
-# Configuration SSH (exécutée en tant que root)
-if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]; then
-    ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
-    ssh-keygen -f /etc/ssh/ssh_host_ecdsa_key -N '' -t ecdsa
-    ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -N '' -t ed25519
-fi
-
-# Modifier la configuration SSH si nécessaire
-sed -i "s/#Port 22/Port ${SSH_PORT}/" /etc/ssh/sshd_config
-
-# Démarrer le service SSH
-/usr/sbin/sshd
-
-# Configuration de la clé SSH publique si fournie
-if [ ! -z "${SSH_PUBLIC_KEY}" ]; then
-    echo "${SSH_PUBLIC_KEY}" > /var/lib/postgresql/.ssh/authorized_keys
-    chmod 600 /var/lib/postgresql/.ssh/authorized_keys
-    chown postgres:postgres /var/lib/postgresql/.ssh/authorized_keys
-fi
-
-# Configurer le serveur SSH
-setup_ssh_server
 
 # Exécuter la configuration de pgBackRest
 setup_pgbackrest
