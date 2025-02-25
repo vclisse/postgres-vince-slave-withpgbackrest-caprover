@@ -36,6 +36,51 @@ Cette solution utilise une architecture sécurisée où:
 3. Définissez les variables d'environnement requises
 4. Déployez l'application
 
+## Configuration des volumes persistants dans CapRover
+
+### Volumes requis
+
+Cette application nécessite trois volumes persistants:
+
+1. **Volume des données PostgreSQL**
+   ```yaml
+   hostPath: /var/lib/postgresql/data
+   containerPath: /var/lib/postgresql/data
+   ```
+   - Contient le PGDATA (`/var/lib/postgresql/data/pgdata`)
+   - Contient les WAL (`/var/lib/postgresql/data/pg_wal`)
+
+2. **Volume pgBackRest**
+   ```yaml
+   hostPath: /var/lib/pgbackrest
+   containerPath: /var/lib/pgbackrest
+   ```
+   - Stocke les sauvegardes et les WAL archivés
+
+3. **Volume SSH**
+   ```yaml
+   hostPath: /var/lib/postgresql/.ssh
+   containerPath: /var/lib/postgresql/.ssh
+   ```
+   - Stocke les clés SSH et la configuration
+
+### Configuration dans CapRover
+
+1. Allez dans l'onglet "App Config"
+2. Dans la section "Persistent Directories":
+   - Ajoutez chaque volume en spécifiant le chemin conteneur
+   - Les chemins conteneur doivent correspondre exactement à ceux listés ci-dessus
+3. Cliquez sur "Save & Update"
+
+### Vérification des volumes
+
+Pour vérifier que les volumes sont correctement montés:
+```bash
+docker exec -it [container_id] ls -la /var/lib/postgresql/data
+docker exec -it [container_id] ls -la /var/lib/pgbackrest
+docker exec -it [container_id] ls -la /var/lib/postgresql/.ssh
+```
+
 ## Configuration côté serveur principal PostgreSQL
 
 ### 1. Installation des paquets requis

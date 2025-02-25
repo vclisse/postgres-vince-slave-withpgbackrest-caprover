@@ -9,3 +9,11 @@ restore_command = 'pgbackrest --stanza=psql archive-get %f %p'
 - Tu documentes ce qu'il faut faire sur le serveur principal dans README.md mais tu ne t'occupe que du serveur slave
 – pgBackRest est installé et pourra être utilisé (via des variables d’environnement) pour restaurer la sauvegarde initiale et récupérer les WAL archivés. 
 - Le serveur principal ne peux que des connexion sortante 
+
+
+# Interfac WEB : 
+- dépendance : streamlit psycopg3 
+
+## Interface WEB fonction : 
+- Intialiser une DB, Importer un fichier SQL
+- Passer du mode slave en mode principal.

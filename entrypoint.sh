@@ -1,6 +1,45 @@
 #!/bin/bash
 set -e
 
+# Vérification des volumes persistants
+check_persistent_volumes() {
+    echo "Vérification des volumes persistants..."
+    
+    # Vérifier le volume PGDATA
+    if [ ! -d "/var/lib/postgresql/data" ]; then
+        echo "ERREUR: Le volume persistant pour PGDATA n'est pas monté!"
+        exit 1
+    fi
+    
+    # Vérifier le volume pgbackrest
+    if [ ! -d "/var/lib/pgbackrest" ]; then
+        echo "ERREUR: Le volume persistant pour pgbackrest n'est pas monté!"
+        exit 1
+    fi
+    
+    # Vérifier le volume SSH
+    if [ ! -d "/var/lib/postgresql/.ssh" ]; then
+        echo "ERREUR: Le volume persistant pour SSH n'est pas monté!"
+        exit 1
+    fi
+    
+    # Créer le sous-répertoire pgdata si nécessaire
+    if [ ! -d "$PGDATA" ]; then
+        mkdir -p "$PGDATA"
+        chown postgres:postgres "$PGDATA"
+        chmod 700 "$PGDATA"
+    fi
+    
+    # Créer le répertoire WAL si nécessaire
+    if [ ! -d "$POSTGRES_INITDB_WALDIR" ]; then
+        mkdir -p "$POSTGRES_INITDB_WALDIR"
+        chown postgres:postgres "$POSTGRES_INITDB_WALDIR"
+        chmod 700 "$POSTGRES_INITDB_WALDIR"
+    fi
+    
+    echo "Vérification des volumes terminée avec succès."
+}
+
 # Configuration du serveur SSH
 setup_ssh_server() {
     echo "Configuration du serveur SSH..."
@@ -84,7 +123,16 @@ EOF
     fi
 }
 
+# Démarrer Streamlit en arrière-plan
+start_web_interface() {
+    echo "Démarrage de l'interface web Streamlit..."
+    streamlit run /app/web/app.py &
+}
+
 echo "Démarrage du script entrypoint PostgreSQL Slave..."
+
+# Vérifier les volumes avant toute autre opération
+check_persistent_volumes
 
 # Configurer le serveur SSH
 setup_ssh_server
@@ -94,6 +142,9 @@ setup_pgbackrest
 
 # Configurer le recovery pour PostgreSQL
 setup_recovery_conf
+
+# Démarrer l'interface web Streamlit
+start_web_interface
 
 echo "Démarrage de PostgreSQL en mode slave..."
 # Exécuter la commande originale Docker
